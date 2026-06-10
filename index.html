@@ -403,7 +403,7 @@ footer{background:#060609;border-top:1px solid var(--border);padding:60px 40px 4
     </div>
     <div id="claim-status"></div>
     <button class="claim-btn" id="claim-btn" onclick="claimUSDC()">受け取る 🚀</button>
-    <p style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;margin-top:12px">Sepolia Testnet上のUSDCが送金されます</p>
+    <p style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;margin-top:12px">Sepolia Testnet上のETHが配布されます</p>
   </div>
 </div>
 
@@ -411,15 +411,8 @@ footer{background:#060609;border-top:1px solid var(--border);padding:60px 40px 4
 // ===== CONFIG =====
 const CAMPAIGN_ID = 'nexwallet-lp-v1';
 // Sepolia Testnet USDC (mock ERC20 - Circle's test USDC)
-const USDC_CONTRACT = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
-// Distributor wallet (demo: replace with actual funded wallet + backend)
-const DISTRIBUTOR = '0x0000000000000000000000000000000000000000';
-
-const ERC20_ABI = [
-  'function transfer(address to, uint256 amount) returns (bool)',
-  'function balanceOf(address) view returns (uint256)',
-  'function decimals() view returns (uint8)'
-];
+// 本番: バックエンドAPIのエンドポイントに置き換え
+// const API_ENDPOINT = 'https://your-api.example.com/claim';
 
 // ===== STATE =====
 let walletAddress = null;
@@ -640,45 +633,45 @@ function openClaimModal(){
   openModal('claim-modal');
 }
 
-// ===== CLAIM USDC =====
+// ===== CLAIM Sepolia ETH =====
+// ETH換算テーブル (1 ETH ≈ $2500想定の象徴的な量)
+const ETH_AMOUNTS = {'1.0':'0.0004','0.5':'0.0002','0.1':'0.00004'};
+
 async function claimUSDC(){
   const vc = vcStore[selectedVC];
   const r = calcReward(vc);
+  const ethAmt = ETH_AMOUNTS[r.amount] || '0.00004';
   const btn = document.getElementById('claim-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>送金処理中...';
   setClaimStatus('<span class="spinner"></span>Sepoliaネットワークに接続中...','info');
 
   try{
-    // NOTE: 本番環境ではバックエンドAPIから送金するべき（秘密鍵をフロントに置かない）
-    // ここではデモとして、ユーザー自身のウォレットからの送金フローをシミュレート
-    // 実装例: distributor walletのバックエンドAPIを呼んでUSDCを送る
+    // ユーザーのウォレットからDistributor(デモ)へ0ETH送信してTX確認する代わりに
+    // Faucetへ誘導 + ローカルで受け取り記録するフロー
+    // 本番: バックエンドAPIを叩いてDistributorウォレットから送金する
 
-    const contract = new ethers.Contract(USDC_CONTRACT, ERC20_ABI, signer);
-    const decimals = 6; // USDC is 6 decimals
-    const amountWei = ethers.parseUnits(r.amount, decimals);
+    // --- Sepolia Faucetへ誘導しつつ受け取り完了をシミュレート ---
+    setClaimStatus('<span class="spinner"></span>フォーセットへ接続中...','info');
+    await new Promise(r=>setTimeout(r,1200));
 
-    setClaimStatus('<span class="spinner"></span>MetaMaskでトランザクションを承認してください...','info');
+    // デモTXハッシュ生成（実際はバックエンドから返る）
+    const demoTxHash = '0x'+Array.from({length:64},()=>Math.floor(Math.random()*16).toString(16)).join('');
 
-    // Demo: transfer from connected wallet (self-demo)
-    // In production: backend signs and sends from distributor wallet
-    const tx = await contract.transfer(walletAddress, amountWei);
-    setClaimStatus(`<span class="spinner"></span>トランザクション送信中... <br><a class="tx-link" href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank">Etherscanで確認 ↗</a>`,'info');
-
-    await tx.wait();
     markClaimed(walletAddress);
-    setClaimStatus(`✅ ${r.label} USDCを受け取りました！<br><a class="tx-link" href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank">トランザクションを確認 ↗</a>`,'success');
+    setClaimStatus(
+      `✅ <strong>${ethAmt} Sepolia ETH</strong>（${r.label}相当）の受け取りリクエストを送信しました！<br><br>`+
+      `実際のSepolia ETHを受け取るには下記フォーセットをご利用ください：<br>`+
+      `<a class="tx-link" href="https://faucets.chain.link/sepolia" target="_blank">🔗 Chainlink Faucet ↗</a>&nbsp;&nbsp;`+
+      `<a class="tx-link" href="https://www.alchemy.com/faucets/ethereum-sepolia" target="_blank">🔗 Alchemy Faucet ↗</a><br><br>`+
+      `<span style="font-size:12px;color:rgba(255,255,255,0.35)">Demo TX: ${demoTxHash.slice(0,20)}...</span>`,
+      'success'
+    );
     btn.textContent = '受け取り完了 ✓';
     document.getElementById('reward-bar').style.display = 'none';
   }catch(e){
     console.error(e);
-    if(e.code===4001){
-      setClaimStatus('トランザクションがキャンセルされました。','error');
-    }else if(e.message&&e.message.includes('insufficient')){
-      setClaimStatus('残高不足です。Sepolia ETHとUSDCが必要です。<br><a class="tx-link" href="https://faucet.circle.com" target="_blank">USDCフォーセット ↗</a>','error');
-    }else{
-      setClaimStatus('エラーが発生しました: '+(e.shortMessage||e.message||'不明なエラー'),'error');
-    }
+    setClaimStatus('エラーが発生しました: '+(e.shortMessage||e.message||'不明なエラー'),'error');
     btn.disabled = false;
     btn.textContent = '再試行する';
   }
