@@ -480,23 +480,34 @@ function markClaimed(addr){
 }
 
 // ===== WALLET CONNECT =====
+function getMetaMaskProvider(){
+  // EIP-6963 / window.ethereum.providers array で MetaMask を特定
+  if(window.ethereum?.providers){
+    const mm = window.ethereum.providers.find(p=>p.isMetaMask && !p.isAvalanche && !p.isCoinbaseWallet);
+    if(mm) return mm;
+  }
+  // 単独インストールの場合
+  if(window.ethereum?.isMetaMask && !window.ethereum?.isAvalanche) return window.ethereum;
+  return null;
+}
+
 async function connectMetaMask(){
   setWalletStatus('<span class="spinner"></span>MetaMaskに接続中...','info');
-  if(!window.ethereum){
-    setWalletStatus('MetaMaskが見つかりません。<a href="https://metamask.io" target="_blank" style="color:var(--cyan)">インストール</a>してください。','error');
+  const mmProvider = getMetaMaskProvider();
+  if(!mmProvider){
+    setWalletStatus('MetaMaskが見つかりません。<a href="https://metamask.io" target="_blank" style="color:var(--cyan)">インストール</a>してください。（CoreなどMetaMask以外のウォレットが優先されている場合はMetaMaskを有効化してください）','error');
     return;
   }
   try{
-    await window.ethereum.request({method:'eth_requestAccounts'});
-    // Switch to Sepolia
+    await mmProvider.request({method:'eth_requestAccounts'});
     try{
-      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0xaa36a7'}]});
+      await mmProvider.request({method:'wallet_switchEthereumChain',params:[{chainId:'0xaa36a7'}]});
     }catch(e){
       if(e.code===4902){
-        await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:'0xaa36a7',chainName:'Sepolia Testnet',nativeCurrency:{name:'ETH',symbol:'ETH',decimals:18},rpcUrls:['https://rpc.sepolia.org'],blockExplorerUrls:['https://sepolia.etherscan.io']}]});
+        await mmProvider.request({method:'wallet_addEthereumChain',params:[{chainId:'0xaa36a7',chainName:'Sepolia Testnet',nativeCurrency:{name:'ETH',symbol:'ETH',decimals:18},rpcUrls:['https://rpc.sepolia.org'],blockExplorerUrls:['https://sepolia.etherscan.io']}]});
       }
     }
-    provider = new ethers.BrowserProvider(window.ethereum);
+    provider = new ethers.BrowserProvider(mmProvider);
     signer = await provider.getSigner();
     walletAddress = await signer.getAddress();
     afterWalletConnect();
@@ -507,12 +518,32 @@ async function connectMetaMask(){
 
 async function connectCoinbase(){
   setWalletStatus('<span class="spinner"></span>Coinbase Walletに接続中...','info');
-  if(!window.ethereum){
-    setWalletStatus('ウォレットが見つかりません。','error');
+  // Coinbase Wallet専用プロバイダーを探す
+  let cbProvider = null;
+  if(window.ethereum?.providers){
+    cbProvider = window.ethereum.providers.find(p=>p.isCoinbaseWallet);
+  }
+  if(!cbProvider && window.ethereum?.isCoinbaseWallet) cbProvider = window.ethereum;
+  if(!cbProvider){
+    setWalletStatus('Coinbase Walletが見つかりません。','error');
     return;
   }
-  // Fallback to ethereum provider
-  await connectMetaMask();
+  try{
+    await cbProvider.request({method:'eth_requestAccounts'});
+    try{
+      await cbProvider.request({method:'wallet_switchEthereumChain',params:[{chainId:'0xaa36a7'}]});
+    }catch(e){
+      if(e.code===4902){
+        await cbProvider.request({method:'wallet_addEthereumChain',params:[{chainId:'0xaa36a7',chainName:'Sepolia Testnet',nativeCurrency:{name:'ETH',symbol:'ETH',decimals:18},rpcUrls:['https://rpc.sepolia.org'],blockExplorerUrls:['https://sepolia.etherscan.io']}]});
+      }
+    }
+    provider = new ethers.BrowserProvider(cbProvider);
+    signer = await provider.getSigner();
+    walletAddress = await signer.getAddress();
+    afterWalletConnect();
+  }catch(e){
+    setWalletStatus('接続がキャンセルされました。','error');
+  }
 }
 
 function afterWalletConnect(){
