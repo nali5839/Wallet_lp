@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexWallet — 次世代ブロックチェーンウォレット</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--purple:#9945FF;--cyan:#14F195;--blue:#00C2FF;--dark:#0a0a0f;--card:#111118;--border:rgba(153,69,255,0.25)}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:var(--dark);color:#fff;overflow-x:hidden}
+
+nav{position:fixed;top:0;width:100%;z-index:100;padding:18px 40px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,10,15,0.7);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
+.logo{font-size:22px;font-weight:800;background:linear-gradient(90deg,var(--purple),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-links{display:flex;gap:32px;list-style:none}
+.nav-links a{color:rgba(255,255,255,0.7);text-decoration:none;font-size:14px;font-weight:500;transition:.2s}
+.nav-links a:hover{color:#fff}
+.nav-cta{background:linear-gradient(135deg,var(--purple),var(--cyan));border:none;padding:10px 22px;border-radius:100px;color:#000;font-weight:700;font-size:14px;cursor:pointer;transition:.2s}
+.nav-cta:hover{opacity:.85;transform:scale(1.03)}
+
+canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+section{padding:100px 40px;position:relative;z-index:2}
+.section-label{font-size:13px;font-weight:600;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+.section-title{font-size:clamp(28px,4vw,48px);font-weight:800;margin-bottom:16px;line-height:1.2}
+.section-sub{color:rgba(255,255,255,0.55);font-size:17px;max-width:520px;line-height:1.7}
+.center{text-align:center;margin:0 auto}
+
+#hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:120px 20px 80px}
+.hero-content{position:relative;z-index:2;max-width:820px}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(153,69,255,0.15);border:1px solid rgba(153,69,255,0.4);padding:6px 16px;border-radius:100px;font-size:13px;color:var(--cyan);margin-bottom:28px}
+.badge-dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+h1{font-size:clamp(40px,7vw,80px);font-weight:900;line-height:1.05;margin-bottom:24px}
+.grad{background:linear-gradient(135deg,#fff 0%,var(--purple) 40%,var(--cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{font-size:clamp(16px,2vw,20px);color:rgba(255,255,255,0.6);max-width:560px;margin:0 auto 40px;line-height:1.7}
+.hero-btns{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.btn-primary{background:linear-gradient(135deg,var(--purple),var(--cyan));border:none;padding:16px 36px;border-radius:100px;color:#000;font-weight:800;font-size:16px;cursor:pointer;transition:.25s;box-shadow:0 0 40px rgba(153,69,255,0.4)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(153,69,255,0.6)}
+.btn-secondary{background:transparent;border:1px solid rgba(255,255,255,0.25);padding:16px 36px;border-radius:100px;color:#fff;font-weight:600;font-size:16px;cursor:pointer;transition:.25s;backdrop-filter:blur(10px)}
+.btn-secondary:hover{border-color:var(--cyan);color:var(--cyan);transform:translateY(-2px)}
+.hero-stats{display:flex;gap:48px;justify-content:center;margin-top:64px;flex-wrap:wrap}
+.stat{text-align:center}
+.stat-num{font-size:32px;font-weight:800;background:linear-gradient(135deg,var(--purple),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-label{font-size:13px;color:rgba(255,255,255,0.5);margin-top:4px}
+
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:60px}
+.feature-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:32px;transition:.3s;position:relative;overflow:hidden}
+.feature-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(153,69,255,0.06),rgba(20,241,149,0.04));opacity:0;transition:.3s}
+.feature-card:hover::before{opacity:1}
+.feature-card:hover{transform:translateY(-4px);border-color:rgba(153,69,255,0.5);box-shadow:0 20px 60px rgba(153,69,255,0.15)}
+.feature-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:20px}
+.icon-purple{background:rgba(153,69,255,0.15)}
+.icon-cyan{background:rgba(20,241,149,0.12)}
+.icon-blue{background:rgba(0,194,255,0.12)}
+.feature-title{font-size:18px;font-weight:700;margin-bottom:10px}
+.feature-desc{color:rgba(255,255,255,0.55);font-size:14px;line-height:1.7}
+
+.steps-wrap{display:flex;gap:0;margin-top:60px;position:relative;flex-wrap:wrap;justify-content:center}
+.steps-wrap::before{content:'';position:absolute;top:44px;left:calc(50% - 280px);width:560px;height:1px;background:linear-gradient(90deg,transparent,var(--purple),var(--cyan),transparent);z-index:0}
+.step{flex:1;min-width:200px;max-width:260px;text-align:center;padding:0 20px;position:relative;z-index:1}
+.step-num{width:88px;height:88px;border-radius:50%;border:2px solid var(--purple);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;margin:0 auto 24px;background:var(--dark);position:relative}
+.step-num::after{content:'';position:absolute;inset:-4px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--cyan));z-index:-1;opacity:.3}
+.step-title{font-size:18px;font-weight:700;margin-bottom:10px}
+.step-desc{color:rgba(255,255,255,0.55);font-size:14px;line-height:1.6}
+
+.security-inner{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;max-width:1100px;margin:0 auto}
+.security-visual{position:relative;height:360px;display:flex;align-items:center;justify-content:center}
+.shield{width:180px;height:180px;background:linear-gradient(135deg,rgba(153,69,255,0.2),rgba(20,241,149,0.1));border:2px solid rgba(153,69,255,0.4);border-radius:30px;display:flex;align-items:center;justify-content:center;font-size:72px;animation:float 3s ease-in-out infinite;box-shadow:0 0 80px rgba(153,69,255,0.3)}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.ring{position:absolute;border-radius:50%;border:1px solid;animation:spin linear infinite}
+.ring1{width:260px;height:260px;border-color:rgba(153,69,255,0.2);animation-duration:12s}
+.ring2{width:340px;height:340px;border-color:rgba(20,241,149,0.15);animation-duration:20s;animation-direction:reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.security-items{margin-top:36px;display:flex;flex-direction:column;gap:16px}
+.sec-item{display:flex;align-items:center;gap:12px;color:rgba(255,255,255,0.75);font-size:15px}
+.sec-check{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+
+#cta{text-align:center}
+.cta-box{background:linear-gradient(135deg,rgba(153,69,255,0.15),rgba(20,241,149,0.08));border:1px solid rgba(153,69,255,0.3);border-radius:32px;padding:80px 40px;max-width:760px;margin:0 auto;position:relative;overflow:hidden}
+.cta-box::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at center,rgba(153,69,255,0.08) 0%,transparent 70%);pointer-events:none}
+.cta-box h2{font-size:clamp(28px,4vw,48px);font-weight:900;margin-bottom:16px}
+.cta-box p{color:rgba(255,255,255,0.6);font-size:17px;margin-bottom:36px}
+
+footer{background:#060609;border-top:1px solid var(--border);padding:60px 40px 40px;position:relative;z-index:2}
+.footer-inner{max-width:1100px;margin:0 auto}
+.footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;margin-bottom:48px}
+.footer-brand p{color:rgba(255,255,255,0.45);font-size:14px;margin-top:12px;line-height:1.7;max-width:260px}
+.footer-col h4{font-size:13px;font-weight:700;color:rgba(255,255,255,0.8);margin-bottom:16px;letter-spacing:.5px}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+.footer-col a{color:rgba(255,255,255,0.45);text-decoration:none;font-size:14px;transition:.2s}
+.footer-col a:hover{color:var(--cyan)}
+.footer-bottom{border-top:1px solid var(--border);padding-top:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.footer-bottom p{color:rgba(255,255,255,0.3);font-size:13px}
+.socials{display:flex;gap:12px;margin-top:20px}
+.social-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s;color:rgba(255,255,255,0.5);text-decoration:none;font-size:15px}
+.social-btn:hover{border-color:var(--purple);color:var(--purple)}
+
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .7s ease,transform .7s ease}
+.revealed{opacity:1;transform:none}
+
+/* ===== REWARD SYSTEM ===== */
+#reward-bar{position:fixed;bottom:-100px;left:0;right:0;z-index:200;display:flex;justify-content:center;padding:20px;transition:bottom .5s cubic-bezier(.34,1.56,.64,1)}
+#reward-bar.show{bottom:0}
+.reward-pill{background:linear-gradient(135deg,rgba(153,69,255,0.95),rgba(20,241,149,0.85));backdrop-filter:blur(20px);border-radius:100px;padding:16px 32px;display:flex;align-items:center;gap:16px;box-shadow:0 8px 60px rgba(153,69,255,0.6);cursor:pointer;border:none;color:#000;font-family:'Inter',sans-serif;font-size:16px;font-weight:800;transition:.2s}
+.reward-pill:hover{transform:scale(1.04);box-shadow:0 12px 80px rgba(153,69,255,0.8)}
+.reward-pill span{font-size:22px}
+
+/* MODAL BASE */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .3s}
+.modal-overlay.active{opacity:1;pointer-events:all}
+.modal{background:#13131f;border:1px solid rgba(153,69,255,0.35);border-radius:28px;padding:40px;max-width:480px;width:100%;position:relative;transform:translateY(20px) scale(.97);transition:transform .3s}
+.modal-overlay.active .modal{transform:none}
+.modal-close{position:absolute;top:16px;right:20px;background:none;border:none;color:rgba(255,255,255,0.4);font-size:22px;cursor:pointer;transition:.2s}
+.modal-close:hover{color:#fff}
+.modal h3{font-size:22px;font-weight:800;margin-bottom:8px}
+.modal p.sub{color:rgba(255,255,255,0.5);font-size:14px;margin-bottom:28px;line-height:1.6}
+
+/* WALLET CONNECT */
+.wallet-option{display:flex;align-items:center;gap:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:18px 20px;cursor:pointer;transition:.2s;margin-bottom:12px;width:100%}
+.wallet-option:hover{border-color:var(--purple);background:rgba(153,69,255,0.08)}
+.wallet-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px}
+.wallet-name{font-weight:700;font-size:16px}
+.wallet-desc{font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px}
+.wallet-arrow{margin-left:auto;color:rgba(255,255,255,0.3);font-size:18px}
+.connected-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(20,241,149,0.12);border:1px solid rgba(20,241,149,0.3);border-radius:100px;padding:4px 12px;font-size:12px;color:var(--cyan);margin-bottom:20px}
+.addr{font-family:monospace;font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:20px;word-break:break-all;background:rgba(255,255,255,0.04);padding:10px 14px;border-radius:10px}
+
+/* VC */
+.vc-card{background:rgba(255,255,255,0.03);border:1px solid rgba(153,69,255,0.2);border-radius:16px;padding:20px;cursor:pointer;transition:.2s;margin-bottom:12px;position:relative}
+.vc-card:hover{border-color:var(--purple);background:rgba(153,69,255,0.07)}
+.vc-card.selected{border-color:var(--cyan);background:rgba(20,241,149,0.06)}
+.vc-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.vc-name{font-weight:700;font-size:15px}
+.vc-badge{font-size:11px;padding:3px 10px;border-radius:100px;font-weight:600}
+.vc-full{background:rgba(20,241,149,0.15);color:var(--cyan)}
+.vc-mid{background:rgba(153,69,255,0.15);color:var(--purple)}
+.vc-low{background:rgba(0,194,255,0.12);color:var(--blue)}
+.vc-attrs{display:flex;gap:8px;flex-wrap:wrap}
+.vc-attr{font-size:12px;background:rgba(255,255,255,0.06);padding:3px 10px;border-radius:100px;color:rgba(255,255,255,0.6)}
+.vc-attr.has{color:var(--cyan);background:rgba(20,241,149,0.1)}
+.vc-new{border:1px dashed rgba(153,69,255,0.3);background:none;text-align:center;padding:18px;cursor:pointer;transition:.2s}
+.vc-new:hover{border-color:var(--purple);background:rgba(153,69,255,0.06)}
+.vc-new-inner{color:rgba(255,255,255,0.5);font-size:14px}
+
+/* VC ISSUE FORM */
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:8px;font-weight:500}
+.form-input{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:12px 16px;color:#fff;font-size:14px;font-family:'Inter',sans-serif;transition:.2s;outline:none}
+.form-input:focus{border-color:var(--purple);background:rgba(153,69,255,0.06)}
+.form-note{font-size:12px;color:rgba(255,255,255,0.35);margin-top:6px}
+
+/* REWARD AMOUNT */
+.reward-amounts{display:flex;flex-direction:column;gap:12px;margin-bottom:24px}
+.amount-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between}
+.amount-label{font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:4px}
+.amount-value{font-size:26px;font-weight:900;background:linear-gradient(135deg,var(--purple),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.amount-reason{font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px}
+.claim-btn{background:linear-gradient(135deg,var(--purple),var(--cyan));border:none;padding:16px;border-radius:14px;color:#000;font-weight:800;font-size:16px;cursor:pointer;width:100%;transition:.25s;font-family:'Inter',sans-serif}
+.claim-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 40px rgba(153,69,255,0.5)}
+.claim-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* PROGRESS STEPS */
+.prog-steps{display:flex;gap:0;margin-bottom:28px}
+.prog-step{flex:1;text-align:center;position:relative}
+.prog-step::after{content:'';position:absolute;top:12px;left:50%;width:100%;height:1px;background:rgba(255,255,255,0.1)}
+.prog-step:last-child::after{display:none}
+.prog-dot{width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:11px;font-weight:700;position:relative;z-index:1;background:var(--dark)}
+.prog-dot.done{background:linear-gradient(135deg,var(--purple),var(--cyan));border-color:transparent;color:#000}
+.prog-dot.active{border-color:var(--purple);color:var(--purple)}
+.prog-label{font-size:11px;color:rgba(255,255,255,0.4)}
+.prog-label.active{color:var(--cyan)}
+
+/* STATUS */
+.status-box{border-radius:14px;padding:16px 20px;margin-bottom:20px;font-size:14px;line-height:1.6}
+.status-error{background:rgba(255,80,80,0.1);border:1px solid rgba(255,80,80,0.3);color:#ff9090}
+.status-success{background:rgba(20,241,149,0.1);border:1px solid rgba(20,241,149,0.3);color:var(--cyan)}
+.status-info{background:rgba(0,194,255,0.08);border:1px solid rgba(0,194,255,0.2);color:var(--blue)}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin2 .8s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin2{to{transform:rotate(360deg)}}
+
+.divider{height:1px;background:rgba(255,255,255,0.07);margin:20px 0}
+.tx-link{color:var(--cyan);font-size:13px;text-decoration:none;word-break:break-all}
+.tx-link:hover{text-decoration:underline}
+
+@media(max-width:768px){nav{padding:14px 20px}.nav-links{display:none}section{padding:70px 20px}.security-inner{grid-template-columns:1fr}.security-visual{height:240px}.steps-wrap::before{display:none}.footer-top{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<nav>
+  <div class="logo">NexWallet</div>
+  <ul class="nav-links">
+    <li><a href="#features">機能</a></li>
+    <li><a href="#steps">使い方</a></li>
+    <li><a href="#security">セキュリティ</a></li>
+  </ul>
+  <button class="nav-cta">今すぐ始める</button>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-content">
+    <div class="badge"><span class="badge-dot"></span>Solanaネットワーク対応</div>
+    <h1><span class="grad">次世代の<br>暗号資産管理</span><br>をあなたに</h1>
+    <p class="hero-sub">NexWalletは、超高速・超低コストのブロックチェーン体験を誰でも簡単に。資産を安全に、スマートに管理しよう。</p>
+    <div class="hero-btns">
+      <button class="btn-primary">🚀 ウォレットを作成する</button>
+      <button class="btn-secondary">デモを見る →</button>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="stat-num">65,000+</div><div class="stat-label">TPS（処理速度）</div></div>
+      <div class="stat"><div class="stat-num">¥0.01</div><div class="stat-label">平均手数料</div></div>
+      <div class="stat"><div class="stat-num">500万+</div><div class="stat-label">アクティブユーザー</div></div>
+      <div class="stat"><div class="stat-num">99.9%</div><div class="stat-label">稼働率</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" style="background:linear-gradient(180deg,var(--dark) 0%,#0d0d18 100%)">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="section-label center">機能</div>
+    <h2 class="section-title center">なぜNexWalletが<br>選ばれるのか</h2>
+    <p class="section-sub center">従来のウォレットを超える、スピード・安全性・使いやすさを一つに。</p>
+    <div class="features-grid">
+      <div class="feature-card reveal"><div class="feature-icon icon-purple">⚡</div><div class="feature-title">超高速トランザクション</div><p class="feature-desc">Solanaの65,000 TPSを最大限活用。送金・取引がほぼリアルタイムで完了します。</p></div>
+      <div class="feature-card reveal"><div class="feature-icon icon-cyan">💰</div><div class="feature-title">業界最安の手数料</div><p class="feature-desc">1トランザクション平均わずか¥0.01。頻繁な取引でもコストを気にせず使えます。</p></div>
+      <div class="feature-card reveal"><div class="feature-icon icon-blue">🛡️</div><div class="feature-title">軍事グレードの暗号化</div><p class="feature-desc">エンドツーエンド暗号化と多要素認証で、あなたの資産を強力に保護します。</p></div>
+      <div class="feature-card reveal"><div class="feature-icon icon-purple">🔗</div><div class="feature-title">マルチチェーン対応</div><p class="feature-desc">Solana、Ethereum、Bitcoinなど主要チェーンをひとつのウォレットで管理。</p></div>
+      <div class="feature-card reveal"><div class="feature-icon icon-cyan">🎨</div><div class="feature-title">NFT管理</div><p class="feature-desc">NFTの閲覧・送受信・売買をシームレスに。コレクションを美しいギャラリーで展示。</p></div>
+      <div class="feature-card reveal"><div class="feature-icon icon-blue">📱</div><div class="feature-title">スマホ完全対応</div><p class="feature-desc">iOS・Android対応アプリで、いつでもどこでも資産を管理できます。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- STEPS -->
+<section id="steps">
+  <div style="max-width:900px;margin:0 auto;text-align:center">
+    <div class="section-label center">使い方</div>
+    <h2 class="section-title center">3ステップで始められる</h2>
+    <p class="section-sub center">難しい設定は一切不要。数分でウォレット開設からご利用開始まで完了します。</p>
+    <div class="steps-wrap">
+      <div class="step reveal"><div class="step-num">1</div><div class="step-title">アカウント作成</div><p class="step-desc">メールアドレスを入力するだけですぐにアカウントを作成できます。</p></div>
+      <div class="step reveal"><div class="step-num">2</div><div class="step-title">ウォレット設定</div><p class="step-desc">セキュリティ設定を行い、シードフレーズを安全に保管してください。</p></div>
+      <div class="step reveal"><div class="step-num">3</div><div class="step-title">送受信スタート</div><p class="step-desc">入金して、すぐに送金・取引・NFT管理を始めましょう！</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- SECURITY -->
+<section id="security" style="background:linear-gradient(180deg,#0d0d18,var(--dark))">
+  <div class="security-inner">
+    <div class="reveal">
+      <div class="section-label">セキュリティ</div>
+      <h2 class="section-title">あなたの資産を<br>完璧に守る</h2>
+      <p class="section-sub">業界最高水準のセキュリティ技術を採用。ハッキングや不正アクセスから24時間365日保護します。</p>
+      <div class="security-items">
+        <div class="sec-item"><div class="sec-check">✓</div>256ビットAES暗号化によるデータ保護</div>
+        <div class="sec-item"><div class="sec-check">✓</div>生体認証・多要素認証対応</div>
+        <div class="sec-item"><div class="sec-check">✓</div>コールドストレージによる資産管理</div>
+        <div class="sec-item"><div class="sec-check">✓</div>リアルタイム不正検知システム</div>
+        <div class="sec-item"><div class="sec-check">✓</div>独立機関による第三者セキュリティ監査</div>
+      </div>
+    </div>
+    <div class="security-visual reveal">
+      <div class="ring ring1"></div><div class="ring ring2"></div>
+      <div class="shield">🛡️</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="cta-box reveal">
+    <h2>今すぐ始めよう</h2>
+    <p>無料でウォレットを作成。数分でセットアップ完了。<br>初心者でも安心のサポートをご用意しています。</p>
+    <div class="hero-btns" style="justify-content:center">
+      <button class="btn-primary">🚀 無料で始める</button>
+      <button class="btn-secondary">詳しく見る</button>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer id="page-footer">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <div class="logo">NexWallet</div>
+        <p>次世代のブロックチェーンウォレット。誰でも簡単・安全・高速に暗号資産を管理できます。</p>
+        <div class="socials"><a class="social-btn" href="#">𝕏</a><a class="social-btn" href="#">in</a><a class="social-btn" href="#">⊕</a></div>
+      </div>
+      <div class="footer-col"><h4>プロダクト</h4><ul><li><a href="#">機能一覧</a></li><li><a href="#">セキュリティ</a></li><li><a href="#">NFT管理</a></li><li><a href="#">DeFi連携</a></li></ul></div>
+      <div class="footer-col"><h4>サポート</h4><ul><li><a href="#">ヘルプセンター</a></li><li><a href="#">使い方ガイド</a></li><li><a href="#">お問い合わせ</a></li><li><a href="#">コミュニティ</a></li></ul></div>
+      <div class="footer-col"><h4>法的情報</h4><ul><li><a href="#">利用規約</a></li><li><a href="#">プライバシー</a></li><li><a href="#">特商法表記</a></li><li><a href="#">Cookie設定</a></li></ul></div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 NexWallet. All rights reserved.</p>
+      <p style="color:rgba(255,255,255,0.25);font-size:12px">暗号資産の取引にはリスクが伴います。投資は自己責任でお願いします。</p>
+    </div>
+  </div>
+</footer>
+
+<!-- ① REWARD BAR -->
+<div id="reward-bar">
+  <button class="reward-pill" onclick="openModal('wallet-modal')">
+    <span>🎁</span> USDCを受け取る — 最後まで読んでくれた方へ
+  </button>
+</div>
+
+<!-- ② WALLET CONNECT MODAL -->
+<div class="modal-overlay" id="wallet-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('wallet-modal')">✕</button>
+    <div class="prog-steps">
+      <div class="prog-step"><div class="prog-dot active">1</div><div class="prog-label active">接続</div></div>
+      <div class="prog-step"><div class="prog-dot">2</div><div class="prog-label">VC選択</div></div>
+      <div class="prog-step"><div class="prog-dot">3</div><div class="prog-label">受け取り</div></div>
+    </div>
+    <h3>ウォレットを接続</h3>
+    <p class="sub">USDCを受け取るためにウォレットを接続してください。<br>Sepolia Testnet上のUSDCが配布されます。</p>
+    <div id="wallet-status"></div>
+    <button class="wallet-option" onclick="connectMetaMask()">
+      <div class="wallet-icon" style="background:#f6851b22">🦊</div>
+      <div><div class="wallet-name">MetaMask</div><div class="wallet-desc">最も人気のブラウザウォレット</div></div>
+      <div class="wallet-arrow">›</div>
+    </button>
+    <button class="wallet-option" onclick="connectCoinbase()">
+      <div class="wallet-icon" style="background:#0052ff22">🔵</div>
+      <div><div class="wallet-name">Coinbase Wallet</div><div class="wallet-desc">簡単・安全なウォレット</div></div>
+      <div class="wallet-arrow">›</div>
+    </button>
+    <div class="divider"></div>
+    <p style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center">接続することで<a href="#" style="color:var(--cyan)">利用規約</a>に同意したことになります</p>
+  </div>
+</div>
+
+<!-- ③ VC MODAL -->
+<div class="modal-overlay" id="vc-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('vc-modal')">✕</button>
+    <div class="prog-steps">
+      <div class="prog-step"><div class="prog-dot done">✓</div><div class="prog-label">接続</div></div>
+      <div class="prog-step"><div class="prog-dot active">2</div><div class="prog-label active">VC選択</div></div>
+      <div class="prog-step"><div class="prog-dot">3</div><div class="prog-label">受け取り</div></div>
+    </div>
+    <div class="connected-badge">✓ ウォレット接続済み</div>
+    <div class="addr" id="connected-addr"></div>
+    <h3>USDCを受け取る</h3>
+    <p class="sub">Verifiable Credentialを選択してください。情報のリッチ度に応じてUSDC受取額が変わります。</p>
+    <div id="vc-list"></div>
+  </div>
+</div>
+
+<!-- VC 新規発行 MODAL -->
+<div class="modal-overlay" id="vc-issue-modal">
+  <div class="modal" style="max-width:440px">
+    <button class="modal-close" onclick="closeModal('vc-issue-modal');openModal('vc-modal')">✕</button>
+    <h3>VCを新規発行</h3>
+    <p class="sub">個人情報を入力してVerifiable Credentialを発行します。入力した情報のリッチ度に応じてUSDCの受取額が決まります。</p>
+    <div class="form-group">
+      <label>メールアドレス *</label>
+      <input class="form-input" id="vc-email" type="email" placeholder="you@example.com">
+    </div>
+    <div class="form-group">
+      <label>氏名</label>
+      <input class="form-input" id="vc-name" type="text" placeholder="山田 太郎">
+      <p class="form-note">入力すると報酬が増えます</p>
+    </div>
+    <div class="form-group">
+      <label>住所</label>
+      <input class="form-input" id="vc-address" type="text" placeholder="東京都渋谷区...">
+      <p class="form-note">氏名・メール・住所すべてで 1 USDC</p>
+    </div>
+    <div id="vc-issue-status"></div>
+    <button class="claim-btn" onclick="issueVC()">VCを発行する</button>
+  </div>
+</div>
+
+<!-- ④⑤ CLAIM MODAL -->
+<div class="modal-overlay" id="claim-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('claim-modal')">✕</button>
+    <div class="prog-steps">
+      <div class="prog-step"><div class="prog-dot done">✓</div><div class="prog-label">接続</div></div>
+      <div class="prog-step"><div class="prog-dot done">✓</div><div class="prog-label">VC選択</div></div>
+      <div class="prog-step"><div class="prog-dot active">3</div><div class="prog-label active">受け取り</div></div>
+    </div>
+    <h3>USDC受け取り確認</h3>
+    <p class="sub">VC情報のリッチ度に基づいて配布額が決定されました。</p>
+    <div class="reward-amounts">
+      <div class="amount-card">
+        <div>
+          <div class="amount-label">あなたの受取額</div>
+          <div class="amount-value" id="claim-amount">0 USDC</div>
+          <div class="amount-reason" id="claim-reason"></div>
+        </div>
+        <div style="font-size:40px" id="claim-emoji">💎</div>
+      </div>
+    </div>
+    <div id="claim-status"></div>
+    <button class="claim-btn" id="claim-btn" onclick="claimUSDC()">受け取る 🚀</button>
+    <p style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;margin-top:12px">Sepolia Testnet上のUSDCが送金されます</p>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const CAMPAIGN_ID = 'nexwallet-lp-v1';
+// Sepolia Testnet USDC (mock ERC20 - Circle's test USDC)
+const USDC_CONTRACT = '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238';
+// Distributor wallet (demo: replace with actual funded wallet + backend)
+const DISTRIBUTOR = '0x0000000000000000000000000000000000000000';
+
+const ERC20_ABI = [
+  'function transfer(address to, uint256 amount) returns (bool)',
+  'function balanceOf(address) view returns (uint256)',
+  'function decimals() view returns (uint8)'
+];
+
+// ===== STATE =====
+let walletAddress = null;
+let provider = null;
+let signer = null;
+let selectedVC = null;
+let vcStore = [];
+
+// ===== PARTICLE CANVAS =====
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+let W,H,particles=[];
+function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight}
+resize();addEventListener('resize',resize);
+const colors=['#9945FF','#14F195','#00C2FF'];
+class P{constructor(){this.reset()}reset(){this.x=Math.random()*W;this.y=Math.random()*H;this.r=Math.random()*1.5+.3;this.c=colors[Math.floor(Math.random()*3)];this.vx=(Math.random()-.5)*.4;this.vy=(Math.random()-.5)*.4;this.a=Math.random()}update(){this.x+=this.vx;this.y+=this.vy;this.a+=.003;if(this.x<0||this.x>W||this.y<0||this.y>H)this.reset()}draw(){ctx.save();ctx.globalAlpha=Math.abs(Math.sin(this.a))*.6;ctx.fillStyle=this.c;ctx.shadowBlur=8;ctx.shadowColor=this.c;ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fill();ctx.restore()}}
+for(let i=0;i<120;i++)particles.push(new P());
+function drawLines(){for(let i=0;i<particles.length;i++){for(let j=i+1;j<particles.length;j++){const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<120){ctx.save();ctx.globalAlpha=(1-d/120)*.12;ctx.strokeStyle='#9945FF';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(particles[i].x,particles[i].y);ctx.lineTo(particles[j].x,particles[j].y);ctx.stroke();ctx.restore()}}}}
+function animate(){ctx.clearRect(0,0,W,H);particles.forEach(p=>{p.update();p.draw()});drawLines();requestAnimationFrame(animate)}
+animate();
+
+// ===== SCROLL REVEAL =====
+const obs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)x.target.classList.add('revealed')}),{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+// ===== SCROLL TO BOTTOM — show reward bar =====
+let rewardShown = false;
+window.addEventListener('scroll', () => {
+  if(rewardShown) return;
+  const footer = document.getElementById('page-footer');
+  const rect = footer.getBoundingClientRect();
+  if(rect.top <= window.innerHeight + 10) {
+    document.getElementById('reward-bar').classList.add('show');
+    rewardShown = true;
+  }
+});
+
+// ===== MODAL HELPERS =====
+function openModal(id){document.getElementById(id).classList.add('active')}
+function closeModal(id){document.getElementById(id).classList.remove('active')}
+
+// ===== VC REWARD CALC =====
+function calcReward(vc){
+  const hasName = vc.name && vc.name.trim();
+  const hasEmail = vc.email && vc.email.trim();
+  const hasAddr = vc.address && vc.address.trim();
+  if(hasName && hasEmail && hasAddr) return {amount:'1.0',label:'1 USDC',reason:'氏名・メール・住所がすべて揃っています',emoji:'💎',tier:'full'};
+  if(hasName && hasEmail) return {amount:'0.5',label:'0.5 USDC',reason:'氏名とメールが確認されています',emoji:'🥈',tier:'mid'};
+  return {amount:'0.1',label:'0.1 USDC',reason:'メールのみ確認されています',emoji:'🥉',tier:'low'};
+}
+
+function alreadyClaimed(addr){
+  const key = `claimed:${CAMPAIGN_ID}:${addr.toLowerCase()}`;
+  return localStorage.getItem(key) === 'true';
+}
+function markClaimed(addr){
+  const key = `claimed:${CAMPAIGN_ID}:${addr.toLowerCase()}`;
+  localStorage.setItem(key, 'true');
+}
+
+// ===== WALLET CONNECT =====
+async function connectMetaMask(){
+  setWalletStatus('<span class="spinner"></span>MetaMaskに接続中...','info');
+  if(!window.ethereum){
+    setWalletStatus('MetaMaskが見つかりません。<a href="https://metamask.io" target="_blank" style="color:var(--cyan)">インストール</a>してください。','error');
+    return;
+  }
+  try{
+    await window.ethereum.request({method:'eth_requestAccounts'});
+    // Switch to Sepolia
+    try{
+      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0xaa36a7'}]});
+    }catch(e){
+      if(e.code===4902){
+        await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:'0xaa36a7',chainName:'Sepolia Testnet',nativeCurrency:{name:'ETH',symbol:'ETH',decimals:18},rpcUrls:['https://rpc.sepolia.org'],blockExplorerUrls:['https://sepolia.etherscan.io']}]});
+      }
+    }
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+    walletAddress = await signer.getAddress();
+    afterWalletConnect();
+  }catch(e){
+    setWalletStatus('接続がキャンセルされました。','error');
+  }
+}
+
+async function connectCoinbase(){
+  setWalletStatus('<span class="spinner"></span>Coinbase Walletに接続中...','info');
+  if(!window.ethereum){
+    setWalletStatus('ウォレットが見つかりません。','error');
+    return;
+  }
+  // Fallback to ethereum provider
+  await connectMetaMask();
+}
+
+function afterWalletConnect(){
+  if(alreadyClaimed(walletAddress)){
+    setWalletStatus('このウォレットはすでに報酬を受け取っています。','error');
+    return;
+  }
+  closeModal('wallet-modal');
+  renderVCModal();
+  openModal('vc-modal');
+}
+
+function setWalletStatus(msg,type){
+  document.getElementById('wallet-status').innerHTML=`<div class="status-box status-${type}">${msg}</div>`;
+}
+
+// ===== VC MODAL =====
+function renderVCModal(){
+  document.getElementById('connected-addr').textContent = walletAddress.slice(0,6)+'...'+walletAddress.slice(-4)+' (Sepolia)';
+  // Load VCs from localStorage
+  const stored = localStorage.getItem('nexwallet:vcs');
+  vcStore = stored ? JSON.parse(stored) : [];
+  renderVCList();
+}
+
+function renderVCList(){
+  const el = document.getElementById('vc-list');
+  let html = '';
+  vcStore.forEach((vc,i)=>{
+    const r = calcReward(vc);
+    const badgeClass = r.tier==='full'?'vc-full':r.tier==='mid'?'vc-mid':'vc-low';
+    html += `<div class="vc-card${selectedVC===i?' selected':''}" onclick="selectVC(${i})">
+      <div class="vc-card-header">
+        <span class="vc-name">📋 ${vc.email}</span>
+        <span class="vc-badge ${badgeClass}">${r.label}</span>
+      </div>
+      <div class="vc-attrs">
+        <span class="vc-attr ${vc.email?'has':''}">メール${vc.email?'✓':''}</span>
+        <span class="vc-attr ${vc.name?'has':''}">氏名${vc.name?'✓':''}</span>
+        <span class="vc-attr ${vc.address?'has':''}">住所${vc.address?'✓':''}</span>
+      </div>
+    </div>`;
+  });
+  html += `<div class="vc-card vc-new" onclick="openVCIssue()">
+    <div class="vc-new-inner">＋ 新しいVCを発行する</div>
+  </div>`;
+  el.innerHTML = html;
+}
+
+function selectVC(i){
+  selectedVC = i;
+  renderVCList();
+  setTimeout(()=>{
+    closeModal('vc-modal');
+    openClaimModal();
+  },300);
+}
+
+function openVCIssue(){
+  closeModal('vc-modal');
+  openModal('vc-issue-modal');
+}
+
+// ===== VC ISSUE =====
+function issueVC(){
+  const email = document.getElementById('vc-email').value.trim();
+  const name = document.getElementById('vc-name').value.trim();
+  const address = document.getElementById('vc-address').value.trim();
+  if(!email || !email.includes('@')){
+    document.getElementById('vc-issue-status').innerHTML='<div class="status-box status-error">有効なメールアドレスを入力してください。</div>';
+    return;
+  }
+  const vc = {email, name, address, issued: Date.now(), id: 'vc_'+Date.now()};
+  vcStore.push(vc);
+  localStorage.setItem('nexwallet:vcs', JSON.stringify(vcStore));
+  selectedVC = vcStore.length - 1;
+  document.getElementById('vc-issue-status').innerHTML='<div class="status-box status-success">✓ VCを発行しました！</div>';
+  setTimeout(()=>{
+    closeModal('vc-issue-modal');
+    openClaimModal();
+  },800);
+}
+
+// ===== CLAIM MODAL =====
+function openClaimModal(){
+  const vc = vcStore[selectedVC];
+  const r = calcReward(vc);
+  document.getElementById('claim-amount').textContent = r.label;
+  document.getElementById('claim-reason').textContent = r.reason;
+  document.getElementById('claim-emoji').textContent = r.emoji;
+  document.getElementById('claim-status').innerHTML = '';
+  document.getElementById('claim-btn').disabled = false;
+  document.getElementById('claim-btn').textContent = '受け取る 🚀';
+  openModal('claim-modal');
+}
+
+// ===== CLAIM USDC =====
+async function claimUSDC(){
+  const vc = vcStore[selectedVC];
+  const r = calcReward(vc);
+  const btn = document.getElementById('claim-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>送金処理中...';
+  setClaimStatus('<span class="spinner"></span>Sepoliaネットワークに接続中...','info');
+
+  try{
+    // NOTE: 本番環境ではバックエンドAPIから送金するべき（秘密鍵をフロントに置かない）
+    // ここではデモとして、ユーザー自身のウォレットからの送金フローをシミュレート
+    // 実装例: distributor walletのバックエンドAPIを呼んでUSDCを送る
+
+    const contract = new ethers.Contract(USDC_CONTRACT, ERC20_ABI, signer);
+    const decimals = 6; // USDC is 6 decimals
+    const amountWei = ethers.parseUnits(r.amount, decimals);
+
+    setClaimStatus('<span class="spinner"></span>MetaMaskでトランザクションを承認してください...','info');
+
+    // Demo: transfer from connected wallet (self-demo)
+    // In production: backend signs and sends from distributor wallet
+    const tx = await contract.transfer(walletAddress, amountWei);
+    setClaimStatus(`<span class="spinner"></span>トランザクション送信中... <br><a class="tx-link" href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank">Etherscanで確認 ↗</a>`,'info');
+
+    await tx.wait();
+    markClaimed(walletAddress);
+    setClaimStatus(`✅ ${r.label} USDCを受け取りました！<br><a class="tx-link" href="https://sepolia.etherscan.io/tx/${tx.hash}" target="_blank">トランザクションを確認 ↗</a>`,'success');
+    btn.textContent = '受け取り完了 ✓';
+    document.getElementById('reward-bar').style.display = 'none';
+  }catch(e){
+    console.error(e);
+    if(e.code===4001){
+      setClaimStatus('トランザクションがキャンセルされました。','error');
+    }else if(e.message&&e.message.includes('insufficient')){
+      setClaimStatus('残高不足です。Sepolia ETHとUSDCが必要です。<br><a class="tx-link" href="https://faucet.circle.com" target="_blank">USDCフォーセット ↗</a>','error');
+    }else{
+      setClaimStatus('エラーが発生しました: '+(e.shortMessage||e.message||'不明なエラー'),'error');
+    }
+    btn.disabled = false;
+    btn.textContent = '再試行する';
+  }
+}
+
+function setClaimStatus(msg,type){
+  document.getElementById('claim-status').innerHTML=`<div class="status-box status-${type} mb">${msg}</div>`;
+}
+</script>
+</body>
+</html>
